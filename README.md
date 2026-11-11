@@ -42,7 +42,7 @@ Mỗi lần có thay đổi (đăng ký, thêm vào giỏ của thành viên, đ
 **Giới hạn:** CSV không phải cơ sở dữ liệu thật. Server chỉ nhận kết nối từ chính máy này, và nếu 2 tab cùng bấm lưu trong đúng một lúc thì lần lưu sau sẽ thắng. Mật khẩu chỉ được băm đơn giản, chỉ dùng cho đồ án.
 
 ## Bản trên Vercel (chỉ để xem)
-Web trên Vercel (https://davines-doanweb.vercel.app) không có `server.js` nên không ghi được CSV. Web tự chuyển sang lưu dữ liệu vào `localStorage` của **từng trình duyệt**: mỗi người mở link có bộ dữ liệu riêng, đơn hàng và tài khoản tạo trên máy này không xuất hiện ở máy khác.
+Web trên Vercel (https://do-an-web-kinh-doanh.vercel.app) không có `server.js` nên không ghi được CSV. Web tự chuyển sang lưu dữ liệu vào `localStorage` của **từng trình duyệt**: mỗi người mở link có bộ dữ liệu riêng, đơn hàng và tài khoản tạo trên máy này không xuất hiện ở máy khác.
 
 - Dùng bản Vercel để xem giao diện và thử chức năng.
 - Muốn lưu dữ liệu vào file CSV (để nộp hoặc mở bằng Excel) thì chạy trên máy bằng `chay-web.bat`.
