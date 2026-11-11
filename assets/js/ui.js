@@ -172,7 +172,8 @@
     return { best: TAGS.best.has(p.id), fresh: TAGS.fresh.has(p.id) };
   }
   // picked: dung tích cần hiển thị giá (khi lọc theo giá); .map(UI.productCard) truyền chỉ số mảng nên phải kiểm tra .sku
-  // opts.buy: thêm nút "Thêm vào giỏ" (trang danh sách) – thêm dung tích đang hiện giá, hoặc dung tích rẻ nhất còn hàng
+  // opts.buy: thêm nút "Thêm vào giỏ" (trang danh sách). Sản phẩm chỉ có 1 dung tích thì thêm thẳng vào giỏ;
+  // sản phẩm nhiều dung tích thì mở hộp chọn dung tích + số lượng trước (chọn sẵn dung tích đang hiện giá, hoặc dung tích rẻ nhất còn hàng)
   function productCard(p, picked, opts) {
     const pick = picked && picked.sku ? picked : null;
     const buy = !!(opts && opts.buy === true);
@@ -192,7 +193,9 @@
     const href = `product.html?id=${encodeURIComponent(p.id)}${pick ? `&sku=${encodeURIComponent(pick.sku)}` : ""}`;
     const buyV = pick && pick.stock > 0 ? pick : p.variants.filter((v) => v.stock > 0).sort((a, b) => a.price - b.price)[0];
     const buyHtml = !buy ? "" : buyV
-      ? `<button class="btn btn-outline btn-block add-btn" type="button" data-add="${esc(buyV.sku)}">Thêm vào giỏ</button>`
+      ? p.variants.length > 1
+        ? `<button class="btn btn-outline btn-block add-btn" type="button" data-choose="${esc(buyV.sku)}">Thêm vào giỏ</button>`
+        : `<button class="btn btn-outline btn-block add-btn" type="button" data-add="${esc(buyV.sku)}">Thêm vào giỏ</button>`
       : `<button class="btn btn-block add-btn out" type="button" disabled>Hết hàng</button>`;
     // Cả thẻ bấm được nhờ link ở tên sản phẩm phủ kín thẻ (.card h3 a::after); nút Thêm vào giỏ nằm trên lớp đó
     return `
@@ -212,7 +215,66 @@
         </div>
       </article>`;
   }
+  // Hộp chọn dung tích cho sản phẩm nhiều dung tích, mở từ nút "Thêm vào giỏ" trên thẻ sản phẩm
+  function chooseVariant(sku) {
+    const f = Store.findVariant(sku);
+    if (!f) return;
+    const p = f.p;
+    let v = f.v, qty = 1;
+    const maxQty = () => Math.min(Store.RULES.maxPerVariant, v.stock);
+    const m = modal(`<div class="pick-variant"></div>`);
+    const box = $(".pick-variant", m.el);
+    function render() {
+      const img = v.images[0] || p.variants.find((x) => x.images[0])?.images[0];
+      const out = v.stock <= 0, sale = Store.saleOf(p, v);
+      box.innerHTML = `
+        <div class="pv-head">
+          ${img ? `<div class="pv-img"><img src="${esc(img)}" alt="${esc(p.name)} ${esc(v.size)}"></div>` : ""}
+          <div>
+            <div class="eyebrow">${esc(p.collection)}</div>
+            <h3>${esc(p.name)}</h3>
+            <div class="pv-price">${fmt(Store.unitPrice(p, v))}${sale ? ` <s class="muted">${fmt(v.price)}</s> <span class="badge sale">Giảm ${sale}%</span>` : ""}</div>
+          </div>
+        </div>
+        <div class="eyebrow">Chọn dung tích</div>
+        <div class="sizes">${p.variants.map((x) => `<button type="button" class="size-btn ${x === v ? "on" : ""} ${x.stock <= 0 ? "out" : ""}" data-sku="${esc(x.sku)}" title="${x.stock <= 0 ? "Tạm hết hàng" : ""}">${esc(x.size)}</button>`).join("")}</div>
+        <div class="stock ${out ? "out" : ""}">${out ? "Tạm hết hàng" : v.stock <= 5 ? `Chỉ còn ${v.stock} sản phẩm` : "Còn hàng"}</div>
+        <div class="buy-row">
+          <div class="qty"><button type="button" data-q="-1" aria-label="Giảm" ${out ? "disabled" : ""}>−</button><input type="number" min="1" max="${maxQty()}" value="${out ? 0 : qty}" ${out ? "disabled" : ""} aria-label="Số lượng"><button type="button" data-q="1" aria-label="Tăng" ${out ? "disabled" : ""}>+</button></div>
+          <button class="btn" type="button" data-pv-add ${out ? "disabled" : ""}>${out ? "Tạm hết hàng" : "Thêm vào giỏ hàng"}</button>
+        </div>
+        <div class="pv-foot"><a class="link small" href="product.html?id=${encodeURIComponent(p.id)}&sku=${encodeURIComponent(v.sku)}">Xem chi tiết sản phẩm</a><button type="button" class="link small pv-close" data-close>Đóng</button></div>`;
+      $$(".pv-close", box).forEach((b) => (b.onclick = m.close));
+      $$(".size-btn", box).forEach((b) => (b.onclick = () => {
+        v = p.variants.find((x) => x.sku === b.dataset.sku);
+        qty = Math.min(qty, Math.max(1, maxQty()));
+        render();
+      }));
+      const input = $("input", box);
+      const setQty = (n) => { qty = Math.max(1, Math.min(n || 1, maxQty())); input.value = qty; };
+      $$("[data-q]", box).forEach((b) => (b.onclick = () => {
+        if (+b.dataset.q > 0 && qty >= maxQty()) toast(`Tối đa ${maxQty()} sản phẩm cho dung tích này.`, "error");
+        setQty(qty + +b.dataset.q);
+      }));
+      input.onchange = () => {
+        const raw = input.value.trim();
+        if (!/^\d+$/.test(raw) || +raw < 1) { toast("Số lượng phải là số nguyên dương.", "error"); input.value = qty; return; }
+        if (+raw > maxQty()) { toast(`Tối đa ${maxQty()} sản phẩm cho dung tích này.`, "error"); input.value = qty; return; }
+        setQty(+raw);
+      };
+      $("[data-pv-add]", box).onclick = () => {
+        const r = Store.addToCart(v.sku, qty);
+        if (!r.ok) return toast(r.error, "error");
+        m.close();
+        toast(`Đã thêm <b>${esc(p.name)} ${esc(v.size)} × ${qty}</b> vào giỏ. <a href="cart.html">Xem giỏ hàng</a>`);
+      };
+    }
+    render();
+    $(".size-btn.on", box)?.focus();
+  }
   document.addEventListener("click", (e) => {
+    const c = e.target.closest && e.target.closest("[data-choose]");
+    if (c) { e.preventDefault(); return chooseVariant(c.dataset.choose); }
     const b = e.target.closest && e.target.closest("[data-add]");
     if (!b) return;
     const f = Store.findVariant(b.dataset.add);

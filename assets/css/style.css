@@ -591,3 +591,14 @@ select.input { appearance: none; -webkit-appearance: none; padding-right: 40px; 
 .zoom-view figcaption { margin-top: 12px; font-weight: 500; }
 .admin-products tr.same-product > td { border-bottom-style: dashed; }
 .admin-products td[rowspan] { vertical-align: middle; }
+
+/* Hộp chọn dung tích khi bấm "Thêm vào giỏ" ở danh sách (sản phẩm nhiều dung tích) */
+.pick-variant .pv-head { display: grid; grid-template-columns: 96px 1fr; gap: 16px; align-items: center; margin-bottom: 18px; }
+.pick-variant .pv-img { aspect-ratio: 1; background: var(--c-bg-soft); }
+.pick-variant .pv-img img { width: 100%; height: 100%; object-fit: contain; mix-blend-mode: multiply; padding: 6%; }
+.pick-variant h3 { margin: 4px 0 6px; font-size: 22px; line-height: 28px; }
+.pick-variant .pv-price { font-size: 18px; }
+.pick-variant .pv-price s { font-size: 14px; }
+.pick-variant .pv-foot { display: flex; justify-content: space-between; margin-top: 16px; }
+.pick-variant .pv-close { background: none; border: 0; cursor: pointer; padding: 0; }
+@media (max-width: 480px) { .pick-variant .buy-row { grid-template-columns: 112px 1fr; } .pick-variant .buy-row .btn { padding-left: 8px; padding-right: 8px; white-space: nowrap; } }
